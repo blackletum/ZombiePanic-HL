@@ -46,6 +46,12 @@ void CPropStaticSpawn::SpawnItem()
 	}
 }
 
+bool CPropStaticSpawn::IsUseableItem() const
+{
+	if ( m_bDisabled ) return false;
+	return m_bCanUse;
+}
+
 void CPropStaticSpawn::Restart()
 {
 	if ( FBitSet( pev->spawnflags, SF_DISABLED ) )

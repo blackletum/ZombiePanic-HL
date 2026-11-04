@@ -15,7 +15,7 @@ public:
 	void KeyValue( KeyValueData *pkvd ) override;
 	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value ) override;
 	int ObjectCaps() override;
-	bool IsUseableItem() const override { return true; }
+	bool IsUseableItem() const override;
 
 protected:
 	void SetSequenceBox();
