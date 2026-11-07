@@ -316,6 +316,7 @@ int gmsgRoundResetPost = 0;
 int gmsgAchievement = 0;
 int gmsgAchEarned = 0;
 int gmsgRoundTime = 0;
+int gmsgHudTimer = 0;
 int gmsgMouseFix = 0;
 
 int gmsgZPAPICall = 0;
@@ -426,6 +427,7 @@ void LinkUserMessages(void)
 	gmsgAchievement = REG_USER_MSG("GiveAch", -1);
 	gmsgAchEarned = REG_USER_MSG("AchEarn", -1);
 	gmsgRoundTime = REG_USER_MSG("RndTime", -1);
+	gmsgHudTimer = REG_USER_MSG("HudTime", -1);
 	gmsgMouseFix = REG_USER_MSG("MouseFix", -1);
 
 	gmsgZPAPICall = REG_USER_MSG("APICheck", -1);

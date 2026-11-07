@@ -8,6 +8,9 @@
 #include "core.h"
 #endif
 
+#define SF_MULTIRELAY_RESET_ON_REACH (1 << 0) // Start disabled
+
+
 class CMultiRelay : public CPointEntity
 {
 	SET_BASECLASS( CPointEntity );
@@ -101,7 +104,13 @@ void CMultiRelay::Restart()
 
 void CMultiRelay::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value )
 {
-	if ( m_index >= m_cTargets ) return;
+	if ( m_index >= m_cTargets )
+	{
+		if ( (pev->spawnflags & SF_MULTIRELAY_RESET_ON_REACH) )
+			Restart();
+		else
+			return;
+	}
 	m_iCurrent++;
 	if ( m_iTargetFire[m_index] > m_iCurrent ) return;
 	CBaseEntity *pFind = UTIL_FindEntityByTargetname( nullptr, STRING(m_iTargetName[m_index]) );

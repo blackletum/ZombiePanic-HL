@@ -676,6 +676,7 @@ public:
 	void Spawn(void);
 	void Restart(void);
 	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void OnScriptCallBack( KeyValues *pData );
 
 private:
 	void StartTimer();
@@ -695,16 +696,34 @@ void CGameTimer::Spawn(void)
 {
 	CRulePointEntity::Spawn();
 
+#ifdef SCRIPT_SYSTEM
+	// Inputs
+	ScriptSystem::RegisterScriptCallback( AvailableScripts_t::InputOutput, this, "Activate" );
+	ScriptSystem::RegisterScriptCallback( AvailableScripts_t::InputOutput, this, "DeActivate" );
+	SetEntityScriptCallback( &CGameTimer::OnScriptCallBack );
+#endif
+
 	if ( (pev->spawnflags & SF_GAMETIMER_DISABLED) )
 		m_bDisabled = true;
 	else
 		m_bDisabled = false;
 
-	if ( (pev->spawnflags & SF_GAMETIMER_START_ON_ROUND) )
+	if ( !(pev->spawnflags & SF_GAMETIMER_START_ON_ROUND) )
 		return;
 
 	if ( !m_bDisabled )
 		StartTimer();
+}
+
+void CGameTimer::OnScriptCallBack( KeyValues *pData )
+{
+	const char *szAction = pData->GetString( "Action" );
+	const char *szValue = pData->GetString( "arg0" );
+	// Check what kind of action we got
+	if ( FStrEq( szAction, "Activate" ) )
+		StartTimer();
+	else if ( FStrEq( szAction, "DeActivate" ) )
+		StopTimer();
 }
 
 void CGameTimer::Restart()
@@ -716,7 +735,7 @@ void CGameTimer::Restart()
 	else
 		m_bDisabled = false;
 
-	if ( (pev->spawnflags & SF_GAMETIMER_START_ON_ROUND) )
+	if ( !(pev->spawnflags & SF_GAMETIMER_START_ON_ROUND) )
 		return;
 
 	if ( !m_bDisabled )
@@ -783,6 +802,128 @@ void CGameTimer::OnTimerThink()
 }
 
 void CGameTimer::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
+{
+	if ( useType == USE_SET )
+	{
+		StartTimer();
+		return;
+	}
+
+	if ( m_bDisabled )
+		StartTimer();
+	else
+		StopTimer();
+	// Toggle it
+	m_bDisabled = !m_bDisabled;
+}
+
+//
+// hud_time -- Fires a target when the timer runs out, and also shows on our HUD.
+// Was created for zpo_keretti.
+//
+
+class CHudTimer : public CRulePointEntity
+{
+public:
+	void KeyValue(KeyValueData *pkvd);
+	void Spawn(void);
+	void Restart(void);
+	void Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value);
+	void OnScriptCallBack( KeyValues *pData );
+
+private:
+	void StartTimer();
+	void StopTimer();
+	void OnTimerThink();
+
+	bool m_bDisabled = false;
+	float m_flTime = -1;
+	float m_flValue = 60.0f;
+};
+
+LINK_ENTITY_TO_CLASS( hud_time, CHudTimer );
+
+
+void CHudTimer::Spawn(void)
+{
+	CRulePointEntity::Spawn();
+
+#ifdef SCRIPT_SYSTEM
+	// Inputs
+	ScriptSystem::RegisterScriptCallback( AvailableScripts_t::InputOutput, this, "Activate" );
+	ScriptSystem::RegisterScriptCallback( AvailableScripts_t::InputOutput, this, "DeActivate" );
+	SetEntityScriptCallback( &CHudTimer::OnScriptCallBack );
+#endif
+}
+
+void CHudTimer::OnScriptCallBack(KeyValues *pData)
+{
+	const char *szAction = pData->GetString( "Action" );
+	const char *szValue = pData->GetString( "arg0" );
+	// Check what kind of action we got
+	if ( FStrEq( szAction, "Activate" ) )
+		StartTimer();
+	else if ( FStrEq( szAction, "DeActivate" ) )
+		StopTimer();
+}
+
+void CHudTimer::Restart()
+{
+	StopTimer();
+}
+
+void CHudTimer::KeyValue(KeyValueData *pkvd)
+{
+	if (FStrEq(pkvd->szKeyName, "time"))
+	{
+		m_flValue = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "target"))
+	{
+		pev->target = ALLOC_STRING(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else
+		CRulePointEntity::KeyValue(pkvd);
+}
+
+void CHudTimer::StartTimer()
+{
+	m_flTime = gpGlobals->time + m_flValue;
+	SetThink(&CHudTimer::OnTimerThink);
+	pev->nextthink = gpGlobals->time + 0.1f;
+
+	// Fire the event to all players
+	MESSAGE_BEGIN( MSG_ALL, gmsgHudTimer );
+	WRITE_BYTE( 1 );
+	WRITE_FLOAT( m_flValue );
+	MESSAGE_END();
+}
+
+void CHudTimer::StopTimer()
+{
+	SetThink(NULL);
+
+	// Fire the event to all players
+	MESSAGE_BEGIN( MSG_ALL, gmsgHudTimer );
+	WRITE_BYTE( 0 );
+	WRITE_FLOAT( m_flValue );
+	MESSAGE_END();
+}
+
+void CHudTimer::OnTimerThink()
+{
+	if ( m_flTime - gpGlobals->time <= 0 )
+	{
+		// Fire our target.
+		SUB_UseTargets( this, USE_TOGGLE, 0 );
+		StopTimer();
+	}
+	pev->nextthink = gpGlobals->time + 0.1f;
+}
+
+void CHudTimer::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value)
 {
 	if ( useType == USE_SET )
 	{

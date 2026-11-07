@@ -10,6 +10,7 @@
 extern int gmsgZombieLives;
 extern int gmsgRoundState;
 extern int gmsgRoundTime;
+extern int gmsgHudTimer;
 
 class IGameModeBase
 {

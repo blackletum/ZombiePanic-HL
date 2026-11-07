@@ -35,7 +35,16 @@ CHudRoundState::CHudRoundState()
 	m_pText->SetContentAlignment( vgui2::Label::Alignment::a_center );
 	gHUD.m_RoundState = ZP::RoundState::RoundState_Invalid;
 
+	m_pTimerBg = new vgui2::Label( this, "Timer", "00:00" );
+	m_pTimerBg->SetVisible( false );
+	m_pTimerBg->SetContentAlignment( vgui2::Label::Alignment::a_center );
+
+	m_pTimer = new vgui2::Label( this, "TimerBg", "00:00" );
+	m_pTimer->SetVisible( false );
+	m_pTimer->SetContentAlignment( vgui2::Label::Alignment::a_center );
+
 	HookMessage<&CHudRoundState::MsgFunc_RoundState>("RoundState");
+	HookMessage<&CHudRoundState::MsgFunc_HudTime>("HudTime");
 }
 
 void CHudRoundState::ApplySchemeSettings(vgui2::IScheme *pScheme)
@@ -100,6 +109,49 @@ void CHudRoundState::Paint()
 		}
 		break;
 	}
+
+	PaintTimer( x, y, w, h );
+}
+
+void CHudRoundState::PaintTimer( int x, int y, int w, int t )
+{
+	if ( !m_pTimer->IsVisible() ) return;
+
+	int timer[2];
+	color24 rgb;
+	FormatTimer( timer[0], timer[1], rgb );
+
+	int iAlpha = m_pTimer->GetFgColor().a();
+	iAlpha += 8;
+	m_pTimer->SetFgColor( Color( rgb.r, rgb.g, rgb.b, (int)clamp( iAlpha, 0, 255 ) ) );
+	m_pTimerBg->SetFgColor( Color( 0, 0, 0, (int)clamp( iAlpha, 0, 255 ) ) );
+
+	char szTimerText[256];
+	szTimerText[0] = '\0';
+	sprintf( szTimerText, "%02d:%02d", timer[0], timer[1] );
+
+	m_pTimer->SetText( szTimerText );
+	m_pTimerBg->SetText( szTimerText );
+
+	m_pTimer->SetBounds( 0, m_iTimerYPos, w, m_iTimerTall );
+	m_pTimerBg->SetBounds( 0+2, m_iTimerYPos+2, w, m_iTimerTall );
+}
+
+void CHudRoundState::FormatTimer( int &minutes, int &seconds, color24 &rgb )
+{
+	rgb.r = 255;
+	rgb.g = 255;
+	rgb.b = 255;
+
+	int iTimeRemaining = max( static_cast<int>( flTimer - gHUD.m_flTime ), 0);
+	minutes = min( 99, iTimeRemaining / 60 );
+	seconds = iTimeRemaining % 60;
+
+	if ( minutes == 0 && seconds <= 35 )
+	{
+		rgb.g = 0;
+		rgb.b = 0;
+	}
 }
 
 int CHudRoundState::MsgFunc_RoundState(const char *pszName, int iSize, void *pbuf)
@@ -108,6 +160,33 @@ int CHudRoundState::MsgFunc_RoundState(const char *pszName, int iSize, void *pbu
 	int state = READ_SHORT();
 	int winner = READ_SHORT();
 	SetRoundState( (ZP::RoundState)state, winner );
+
+	return 1;
+}
+
+int CHudRoundState::MsgFunc_HudTime(const char *pszName, int iSize, void *pbuf)
+{
+	BEGIN_READ( pbuf, iSize );
+	bool state = READ_BYTE() == 1 ? true : false;
+	float flTime = READ_FLOAT();
+
+	vgui2::IScheme *pScheme = vgui2::scheme()->GetIScheme( GetScheme() );
+	if ( pScheme )
+	{
+		vgui2::HFont font = pScheme->GetFont( m_szTimerFont, IsProportional() );
+		if ( font != vgui2::INVALID_FONT )
+		{
+			m_pTimer->SetFont( font );
+			m_pTimerBg->SetFont( font );
+		}
+	}
+
+	m_pTimer->SetFgColor( Color( 0, 0, 0, 0 ) );
+	m_pTimerBg->SetFgColor( Color( 0, 0, 0, 0 ) );
+
+	m_pTimer->SetVisible( state );
+	m_pTimerBg->SetVisible( state );
+	flTimer = gHUD.m_flTime + flTime;
 
 	return 1;
 }
@@ -130,6 +209,8 @@ void CHudRoundState::SetRoundState( ZP::RoundState iState, int iWinner )
 			m_pText->SetFgColor( Color( 255, 255, 255, 255 ) );
 			m_pText->SetText( "#ZP_WaitingForPlayers" );
 			m_pText->SetVisible( true );
+		    m_pTimer->SetVisible( false );
+		    m_pTimerBg->SetVisible( false );
 			Input_StopAllMovements( true );
 		}
 		break;
@@ -137,6 +218,8 @@ void CHudRoundState::SetRoundState( ZP::RoundState iState, int iWinner )
 		case ZP::RoundState_RoundIsStarting:
 		{
 			m_pText->SetVisible( false );
+		    m_pTimer->SetVisible( false );
+		    m_pTimerBg->SetVisible( false );
 			PlayAudio( "modes/round_ready.wav" );
 			Input_StopAllMovements( true );
 		}
@@ -185,6 +268,8 @@ void CHudRoundState::SetRoundState( ZP::RoundState iState, int iWinner )
 			PlayAudio( szSoundToPlay );
 			m_pText->SetFgColor( Color( 255, 255, 255, 0 ) );
 			m_pText->SetVisible( true );
+		    m_pTimer->SetVisible( false );
+		    m_pTimerBg->SetVisible( false );
 			Input_StopAllMovements( true );
 			m_pBackground->SetVisible( true );
 			m_pBackground->SetFillColor( Color( 0, 0, 0, 0 ) );
