@@ -2372,7 +2372,17 @@ void CTriggerTeleport ::Spawn(void)
 	SetTouch(&CTriggerTeleport::TeleportTouch);
 }
 
-LINK_ENTITY_TO_CLASS(info_teleport_destination, CPointEntity);
+class CTeleportDestination : public CPointEntity
+{
+public:
+	void Restart(void);
+};
+LINK_ENTITY_TO_CLASS(info_teleport_destination, CTeleportDestination);
+
+void CTeleportDestination::Restart()
+{
+	pev->iuser1 = 0;
+}
 
 class CTriggerSave : public CBaseTrigger
 {

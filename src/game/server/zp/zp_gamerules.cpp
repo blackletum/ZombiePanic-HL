@@ -61,6 +61,7 @@ static const char *s_EntitiesRestarts[] = {
 	"multisource",
 	"env_beam",
 	"env_laser",
+	"info_teleport_destination",
 	"trigger_relay",
 	"trigger_auto",
 	"trigger_multiple",
@@ -76,6 +77,7 @@ static const char *s_EntitiesRestarts[] = {
 	"path_track",
 	"info_player_team1",
 	"info_player_team2",
+	"hud_time",
 	"", // END Marker
 };
 

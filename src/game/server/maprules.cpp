@@ -943,6 +943,8 @@ void CHudTimer::Use(CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useT
 //
 // Entity Teleport
 //
+#define SF_TELEPORT_DST_DISABLE_ON_TELE (1 << 0) // Disable on teleport. This will auto disable the teleport
+
 class CEntityTeleport : public CRulePointEntity
 {
 public:
@@ -991,7 +993,10 @@ void CEntityTeleport::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 	pFind = FIND_ENTITY_BY_TARGETNAME( nullptr, STRING(pev->target) );
 	while ( !FNullEnt( pFind ) )
 	{
-		m_RandomList.push_back( pFind );
+		entvars_t *entvars = VARS( pFind );
+		// only add our targets if they aren't disabled.
+		if ( entvars->iuser1 == 0 )
+			m_RandomList.push_back( pFind );
 		pFind = FIND_ENTITY_BY_TARGETNAME( pFind, STRING(pev->target) );
 	}
 
@@ -1035,6 +1040,11 @@ void CEntityTeleport::Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TY
 				i + 1
 			);
 		}
+
+		// If teleport entity gets disabled on use, disable it.
+		entvars_t *entvars = VARS( pEntTarget );
+		if ( (entvars->spawnflags & SF_TELEPORT_DST_DISABLE_ON_TELE) )
+			entvars->iuser1 = 1;
 
 		// Teleport the entity.
 		TeleportEntity( pEnt, pEntTarget );
